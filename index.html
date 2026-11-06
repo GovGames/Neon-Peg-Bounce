@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Neon Peg Bounce - Cyber Arcade</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Orbitron & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      background-color: #030408;
+      overflow: hidden;
+    }
+    .font-arcade {
+      font-family: 'Orbitron', monospace;
+    }
+    .neon-text-cyan {
+      text-shadow: 0 0 8px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+    }
+    .neon-box {
+      box-shadow: 0 0 30px rgba(14, 165, 233, 0.25), inset 0 0 20px rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+    }
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 25%, #0e122d 0%, #030408 100%);
+    }
+  </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center relative overflow-hidden">
+
+  <!-- Main Game Container -->
+  <div id="gameContainer" class="relative w-full max-w-[1080px] aspect-[9/16] sm:aspect-[16/9] max-h-screen bg-black rounded-2xl overflow-hidden shadow-2xl neon-box flex flex-col">
+    
+    <!-- Top HUD Bar -->
+    <header class="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-6 py-2 bg-slate-950/85 backdrop-blur-md border-b border-cyan-900/40 text-xs sm:text-sm font-arcade">
+      <!-- Left Stats: Balls & Level -->
+      <div class="flex items-center space-x-3 sm:space-x-5">
+        <div class="flex items-center space-x-1.5 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-cyan-500/20">
+          <span class="text-cyan-400 font-bold">BALLS:</span>
+          <span id="uiBalls" class="text-white text-base sm:text-lg font-black">10</span>
+        </div>
+        <div class="flex items-center space-x-1.5 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-amber-500/20">
+          <span class="text-amber-400 font-bold">LVL:</span>
+          <span id="uiLevel" class="text-white font-bold">1</span>
+        </div>
+        <div class="hidden sm:flex items-center space-x-1.5 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-rose-500/20">
+          <span class="text-rose-400 font-bold">TARGETS:</span>
+          <span id="uiTargets" class="text-rose-200 font-bold">0</span>
+        </div>
+      </div>
+
+      <!-- Center: Score & Combo Streak Indicator -->
+      <div class="flex flex-col items-center">
+        <div class="flex items-center space-x-2">
+          <span class="text-[10px] sm:text-xs text-cyan-400/80 tracking-widest font-semibold">SCORE</span>
+          <span id="uiComboBadge" class="hidden text-[10px] font-black px-1.5 py-0.2 rounded bg-pink-500/30 text-pink-300 border border-pink-400/50">COMBO x1</span>
+        </div>
+        <span id="uiScore" class="text-lg sm:text-2xl font-black text-cyan-300 neon-text-cyan leading-none">0</span>
+      </div>
+
+      <!-- Right: Coins, Sound, Skin Selector, Shop -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <div class="flex items-center space-x-1 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-400/40 text-amber-300 font-bold shadow-sm">
+          <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/><text x="10" y="14" font-size="11" font-weight="bold" text-anchor="middle" fill="currentColor">¢</text></svg>
+          <span id="uiCoins">0</span>
+        </div>
+
+        <button id="btnSound" class="p-2 rounded-lg bg-cyan-950/60 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 transition" title="Toggle Sound">
+          <svg id="iconSoundOn" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+          <svg id="iconSoundOff" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m12-2l4 4m0-4l-4 4"/></svg>
+        </button>
+
+        <button id="btnShop" class="px-3 py-1 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:brightness-110 text-white font-bold transition border border-purple-300/40 shadow-md">
+          UPGRADES
+        </button>
+      </div>
+    </header>
+
+    <!-- Canvas surface -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- CRT scanlines overlay -->
+    <div class="scanlines absolute inset-0"></div>
+
+    <!-- UI Notification Toast -->
+    <div id="noticeToast" class="absolute top-14 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-all duration-300 font-arcade text-center px-4 py-1.5 rounded-full bg-slate-900/90 border border-cyan-400/60 text-cyan-300 text-xs sm:text-sm tracking-wider shadow-lg">
+      ROUND START
+    </div>
+
+    <!-- FEVER MODE OVERLAY BANNER -->
+    <div id="feverBanner" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none font-arcade text-center px-6 py-2 rounded-2xl bg-gradient-to-r from-pink-600 via-amber-500 to-cyan-500 text-white font-black text-base sm:text-2xl tracking-widest shadow-2xl animate-pulse">
+      ★ EXTREME FEVER MODE ★
+    </div>
+
+    <!-- Upgrades & Ball Skins Shop Modal -->
+    <div id="shopModal" class="hidden absolute inset-0 z-40 bg-slate-950/92 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="w-full max-w-lg bg-slate-900 border border-cyan-500/40 rounded-2xl p-5 text-white shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h2 class="text-xl font-arcade font-bold text-cyan-300 tracking-wider">CYBER LAB & VAULT</h2>
+            <p class="text-[11px] text-slate-400">Upgrade physics & equip neon trail cores</p>
+          </div>
+          <button id="btnCloseShop" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="overflow-y-auto space-y-4 py-3 pr-1">
+          <!-- Upgrades Section -->
+          <div>
+            <span class="text-xs font-arcade font-bold text-cyan-400 tracking-wider">SYSTEM UPGRADES</span>
+            <div class="space-y-2 mt-2" id="shopItemsContainer"></div>
+          </div>
+
+          <!-- Ball Skin Selector Section -->
+          <div>
+            <span class="text-xs font-arcade font-bold text-pink-400 tracking-wider">BALL SKINS & TRAIL FX</span>
+            <div class="grid grid-cols-2 gap-2 mt-2" id="skinsContainer"></div>
+          </div>
+        </div>
+
+        <!-- Simulated Poki Rewarded Ad Button for Free Coins -->
+        <div class="pt-3 border-t border-slate-800">
+          <button id="btnWatchAdCoins" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 font-arcade font-bold text-xs sm:text-sm tracking-wide shadow-lg flex items-center justify-center space-x-2 transition transform active:scale-95">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm-1 11.5v-7l5 3.5-5 3.5z"/></svg>
+            <span>WATCH POKI SPONSOR (+250 FREE COINS)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over / Level Complete Modal -->
+    <div id="resultModal" class="hidden absolute inset-0 z-40 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="w-full max-w-md bg-slate-900/90 border border-cyan-400/50 rounded-2xl p-6 text-center text-white space-y-4">
+        <h2 id="resultTitle" class="text-3xl font-arcade font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">
+          ROUND CLEARED!
+        </h2>
+        <p id="resultDesc" class="text-sm text-slate-300">All Cyber Targets Obliterated</p>
+        
+        <div class="bg-slate-950/70 rounded-xl p-4 border border-slate-800 space-y-2 text-sm font-arcade">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Score Earned:</span>
+            <span id="resultScore" class="text-cyan-300 font-bold">0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Coins Collected:</span>
+            <span id="resultCoins" class="text-amber-400 font-bold">+0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">High Score:</span>
+            <span id="resultHigh" class="text-purple-300 font-bold">0</span>
+          </div>
+        </div>
+
+        <div class="space-y-2.5 pt-2">
+          <button id="btnResultContinue" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-arcade font-bold tracking-wider text-white shadow-lg transition">
+            CONTINUE
+          </button>
+          <button id="btnResultRevive" class="hidden w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 font-arcade font-bold text-xs text-white transition flex items-center justify-center space-x-1.5 shadow-md">
+            <span>POKI REWARD: REVIVE +5 BALLS</span>
+          </button>
+          <button id="btnResultDoubleCoins" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 font-arcade font-bold text-xs text-white transition flex items-center justify-center space-x-1.5 shadow-md">
+            <span>POKI REWARD: DOUBLE COINS (2X)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Poki SDK Simulation Screen -->
+    <div id="adSimulationOverlay" class="hidden absolute inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-6 text-center space-y-4">
+      <div class="w-16 h-16 rounded-full border-4 border-cyan-500/20 border-t-cyan-400 animate-spin"></div>
+      <div class="font-arcade text-cyan-300 text-lg sm:text-xl">POKI REWARDED ADVERTISEMENT</div>
+      <p class="text-xs text-slate-400 max-w-xs">Simulating video ad playback. Seamlessly handles reward resolution.</p>
+      <div id="adTimer" class="text-2xl font-black text-amber-400 font-arcade">3s</div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================================================
+       POKI SDK READY INTEGRATION BRIDGE
+       ========================================================================== */
+    const PokiBridge = {
+      isLivePoki: typeof PokiSDK !== 'undefined',
+      
+      init() {
+        if (this.isLivePoki) {
+          PokiSDK.init().then(() => console.log("Poki SDK active")).catch(() => console.log("Poki SDK blocked"));
+        }
+      },
+      gameplayStart() {
+        if (this.isLivePoki) PokiSDK.gameplayStart();
+      },
+      gameplayStop() {
+        if (this.isLivePoki) PokiSDK.gameplayStop();
+      },
+      commercialBreak(callback) {
+        if (this.isLivePoki) {
+          PokiSDK.commercialBreak().then(callback);
+        } else {
+          showSimulatedAd(2, callback);
+        }
+      },
+      rewardedBreak(onSuccess, onFail) {
+        if (this.isLivePoki) {
+          PokiSDK.rewardedBreak().then(success => {
+            if (success) onSuccess();
+            else if (onFail) onFail();
+          });
+        } else {
+          showSimulatedAd(3, onSuccess);
+        }
+      }
+    };
+
+    function showSimulatedAd(durationSec, onFinished) {
+      const overlay = document.getElementById('adSimulationOverlay');
+      const timerEl = document.getElementById('adTimer');
+      overlay.classList.remove('hidden');
+      let remaining = durationSec;
+      timerEl.innerText = `${remaining}s`;
+
+      const interval = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          timerEl.innerText = `${remaining}s`;
+        } else {
+          clearInterval(interval);
+          overlay.classList.add('hidden');
+          if (onFinished) onFinished();
+        }
+      }, 1000);
+    }
+
+    /* ==========================================================================
+       POLYPHONIC RETRO AUDIO ENGINE (Web Audio API)
+       ========================================================================== */
+    class RetroAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+
+      // Musical pitch ladder for combo hits (pentatonic scale)
+      playMusicalHit(streakIndex = 1) {
+        if (!this.enabled) return;
+        this.init();
+        const pentatonicScale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+        const freq = pentatonicScale[Math.min(streakIndex - 1, pentatonicScale.length - 1)];
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = streakIndex > 5 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.28);
+      }
+
+      playBumper() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.08);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+
+      playExplosion() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.45;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(650, now);
+        filter.frequency.linearRampToValueAtTime(40, now + 0.45);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.45, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      playCoin() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(987.77, now);
+        osc.frequency.setValueAtTime(1318.51, now + 0.08);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playShoot() {
+        if (!this.enabled) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      playFanfare() {
+        if (!this.enabled) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.init();
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.35);
+          }, idx * 90);
+        });
+      }
+    }
+
+    const audio = new RetroAudio();
+
+    /* ==========================================================================
+       BALL SKINS CONFIGURATION
+       ========================================================================== */
+    const BALL_SKINS = {
+      CYAN: {
+        id: 'CYAN',
+        name: 'Neon Cyan',
+        cost: 0,
+        coreColor: '#ffffff',
+        glowColor: '#00f7ff',
+        trailColor: '#00f7ff',
+        particleShape: 'circle'
+      },
+      SOLAR: {
+        id: 'SOLAR',
+        name: 'Solar Flare',
+        cost: 150,
+        coreColor: '#fffbeb',
+        glowColor: '#f97316',
+        trailColor: '#ef4444',
+        particleShape: 'flame'
+      },
+      VOID: {
+        id: 'VOID',
+        name: 'Cyber Void',
+        cost: 250,
+        coreColor: '#fdf4ff',
+        glowColor: '#c084fc',
+        trailColor: '#a855f7',
+        particleShape: 'spark'
+      },
+      MATRIX: {
+        id: 'MATRIX',
+        name: 'Matrix Core',
+        cost: 400,
+        coreColor: '#ecfdf5',
+        glowColor: '#10b981',
+        trailColor: '#34d399',
+        particleShape: 'code'
+      }
+    };
+
+    /* ==========================================================================
+       GAME STATE & UPGRADES
+       ========================================================================== */
+    const state = {
+      level: 1,
+      score: 0,
+      roundScore: 0,
+      roundCoins: 0,
+      highScore: 0,
+      coins: 80,
+      ballsRemaining: 10,
+      maxBalls: 10,
+      activeBalls: [],
+      particles: [],
+      floatingTexts: [],
+      shockwaves: [],
+      pegs: [],
+      bumpers: [],
+      buckets: [],
+      aimAngle: Math.PI / 2,
+      targetsRemaining: 0,
+      totalTargets: 0,
+      roundStreak: 0,
+      roundState: 'PLAYING',
+      isFeverMode: false,
+      screenShake: 0,
+      equippedSkin: 'CYAN',
+      unlockedSkins: ['CYAN'],
+
+      upgrades: {
+        bounce: 0,      // Elasticity
+        capacity: 0,    // Extra starting balls
+        laser: 1,       // Trajectory guide line
+        magnet: 0       // Wider bottom bucket & catch speed
+      }
+    };
+
+    function loadSavedData() {
+      try {
+        const saved = localStorage.getItem('neon_peg_bounce_save_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state.highScore = parsed.highScore || 0;
+          state.coins = parsed.coins !== undefined ? parsed.coins : 80;
+          if (parsed.upgrades) Object.assign(state.upgrades, parsed.upgrades);
+          if (parsed.unlockedSkins) state.unlockedSkins = parsed.unlockedSkins;
+          if (parsed.equippedSkin) state.equippedSkin = parsed.equippedSkin;
+        }
+      } catch (e) {
+        console.warn('Storage disabled or sandbox context');
+      }
+    }
+
+    function persistData() {
+      try {
+        const payload = {
+          highScore: Math.max(state.highScore, state.score),
+          coins: state.coins,
+          upgrades: state.upgrades,
+          unlockedSkins: state.unlockedSkins,
+          equippedSkin: state.equippedSkin
+        };
+        localStorage.setItem('neon_peg_bounce_save_v2', JSON.stringify(payload));
+      } catch (e) {}
+    }
+
+    /* ==========================================================================
+       CANVAS & RESOLUTION
+       ========================================================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const V_WIDTH = 800;
+    const V_HEIGHT = 1000;
+    let scaleRatio = 1;
+
+    function resizeCanvas() {
+      const container = document.getElementById('gameContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      scaleRatio = canvas.width / V_WIDTH;
+      ctx.resetTransform?.();
+      ctx.scale(scaleRatio, scaleRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    /* ==========================================================================
+       PEG CLASSES & VARIETIES
+       ========================================================================== */
+    const PEG_DEFS = {
+      BLUE: { color: '#00f7ff', glow: '#00f7ff', points: 60, coins: 0, isTarget: false },
+      ORANGE: { color: '#ff6600', glow: '#ff7700', points: 200, coins: 1, isTarget: true },
+      GREEN: { color: '#22c55e', glow: '#4ade80', points: 300, coins: 2, isSpecial: 'MULTI' },
+      PURPLE: { color: '#d946ef', glow: '#ec4899', points: 500, coins: 3, isSpecial: 'BOMB' },
+      GOLD: { color: '#facc15', glow: '#fde047', points: 400, coins: 15, isSpecial: 'COIN' }
+    };
+
+    class Peg {
+      constructor(x, y, radius, typeKey = 'BLUE') {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.typeKey = typeKey;
+        this.type = PEG_DEFS[typeKey];
+        this.hit = false;
+        this.hitPulse = 0;
+        this.isCleared = false;
+        this.oscOffset = Math.random() * Math.PI * 2;
+      }
+
+      update(dt) {
+        if (this.hitPulse > 0) this.hitPulse = Math.max(0, this.hitPulse - dt * 3.5);
+      }
+
+      draw(c) {
+        if (this.isCleared) return;
+        c.save();
+        const pulseRadius = this.radius * (1 + this.hitPulse * 0.45);
+
+        c.beginPath();
+        c.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
+
+        if (this.hit || this.hitPulse > 0) {
+          c.fillStyle = '#ffffff';
+          c.shadowColor = this.type.glow;
+          c.shadowBlur = 25;
+          c.fill();
+        } else {
+          c.fillStyle = this.type.color;
+          c.shadowColor = this.type.glow;
+          c.shadowBlur = 12;
+          c.fill();
+
+          // Inner ring highlight
+          c.beginPath();
+          c.arc(this.x, this.y, this.radius * 0.4, 0, Math.PI * 2);
+          c.fillStyle = '#ffffff';
+          c.fill();
+        }
+        c.restore();
+      }
+    }
+
+    class BumperPin {
+      constructor(x, y, radius = 24) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.pulse = 0;
+      }
+
+      update(dt) {
+        if (this.pulse > 0) this.pulse = Math.max(0, this.pulse - dt * 4);
+      }
+
+      draw(c) {
+        c.save();
+        const r = this.radius * (1 + this.pulse * 0.3);
+
+        c.beginPath();
+        c.arc(this.x, this.y, r, 0, Math.PI * 2);
+        c.fillStyle = '#1e1b4b';
+        c.strokeStyle = '#818cf8';
+        c.lineWidth = 4;
+        c.shadowColor = '#6366f1';
+        c.shadowBlur = 18;
+        c.fill();
+        c.stroke();
+
+        // Pulsing core
+        c.beginPath();
+        c.arc(this.x, this.y, r * 0.5, 0, Math.PI * 2);
+        c.fillStyle = this.pulse > 0 ? '#ffffff' : '#a5b4fc';
+        c.fill();
+        c.restore();
+      }
+    }
+
+    /* ==========================================================================
+       BALLS & TRAIL PHYSICS
+       ========================================================================== */
+    class Ball {
+      constructor(x, y, vx, vy, skinKey = 'CYAN') {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.radius = 10;
+        this.isAlive = true;
+        this.skinKey = skinKey;
+        this.skin = BALL_SKINS[skinKey] || BALL_SKINS.CYAN;
+        this.history = [];
+      }
+
+      update(dt) {
+        const gravity = 860;
+        this.vy += gravity * dt;
+
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Maintain tail history for smooth glowing ribbon
+        this.history.push({ x: this.x, y: this.y, life: 1.0 });
+        if (this.history.length > 12) this.history.shift();
+        this.history.forEach(h => h.life -= dt * 2.5);
+
+        // Wall collisions
+        const leftLimit = 22 + this.radius;
+        const rightLimit = V_WIDTH - 22 - this.radius;
+
+        if (this.x < leftLimit) {
+          this.x = leftLimit;
+          this.vx = -this.vx * 0.88;
+          audio.playMusicalHit(2);
+          spawnSparks(this.x, this.y, this.skin.trailColor, 6);
+        } else if (this.x > rightLimit) {
+          this.x = rightLimit;
+          this.vx = -this.vx * 0.88;
+          audio.playMusicalHit(2);
+          spawnSparks(this.x, this.y, this.skin.trailColor, 6);
+        }
+
+        // Ceiling collision
+        if (this.y < 30 + this.radius) {
+          this.y = 30 + this.radius;
+          this.vy = -this.vy * 0.75;
+        }
+
+        // Fallen through bottom
+        if (this.y > V_HEIGHT + 35) {
+          this.isAlive = false;
+        }
+      }
+
+      draw(c) {
+        // Draw trailing particles / glow line
+        for (let i = 0; i < this.history.length; i++) {
+          const pt = this.history[i];
+          if (pt.life <= 0) continue;
+          c.save();
+          c.beginPath();
+          c.arc(pt.x, pt.y, this.radius * (0.3 + (i / this.history.length) * 0.6), 0, Math.PI * 2);
+          c.fillStyle = this.skin.trailColor;
+          c.globalAlpha = Math.max(0, pt.life * 0.5);
+          c.shadowColor = this.skin.glowColor;
+          c.shadowBlur = 10;
+          c.fill();
+          c.restore();
+        }
+
+        // Draw core ball
+        c.save();
+        c.beginPath();
+        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        c.fillStyle = this.skin.coreColor;
+        c.shadowColor = this.skin.glowColor;
+        c.shadowBlur = 18;
+        c.fill();
+        c.restore();
+      }
+    }
+
+    /* ==========================================================================
+       JUICE: PARTICLES, SHOCKWAVES & FLOATING LABELS
+       ========================================================================== */
+    class Particle {
+      constructor(x, y, vx, vy, color, life, size) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.life = life;
+        this.maxLife = life;
+        this.size = size;
+      }
+      update(dt) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.vy += 280 * dt;
+        this.life -= dt;
+      }
+      draw(c) {
+        if (this.life <= 0) return;
+        const progress = Math.max(0, this.life / this.maxLife);
+        c.save();
+        c.beginPath();
+        c.arc(this.x, this.y, this.size * progress, 0, Math.PI * 2);
+        c.fillStyle = this.color;
+        c.shadowColor = this.color;
+        c.shadowBlur = 8;
+        c.globalAlpha = progress;
+        c.fill();
+        c.restore();
+      }
+    }
+
+    class Shockwave {
+      constructor(x, y, maxRadius, color) {
+        this.x = x;
+        this.y = y;
+        this.radius = 5;
+        this.maxRadius = maxRadius;
+        this.color = color;
+        this.life = 1.0;
+      }
+      update(dt) {
+        this.radius += (this.maxRadius - this.radius) * 8 * dt;
+        this.life -= dt * 2.2;
+      }
+      draw(c) {
+        if (this.life <= 0) return;
+        c.save();
+        c.beginPath();
+        c.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        c.strokeStyle = this.color;
+        c.lineWidth = 3.5 * this.life;
+        c.shadowColor = this.color;
+        c.shadowBlur = 15;
+        c.globalAlpha = Math.max(0, this.life);
+        c.stroke();
+        c.restore();
+      }
+    }
+
+    class FloatingText {
+      constructor(x, y, text, color, isBig = false) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.life = isBig ? 1.3 : 0.85;
+        this.isBig = isBig;
+      }
+      update(dt) {
+        this.y -= (this.isBig ? 60 : 40) * dt;
+        this.life -= dt;
+      }
+      draw(c) {
+        if (this.life <= 0) return;
+        c.save();
+        c.font = `bold ${this.isBig ? 24 : 17}px Orbitron, monospace`;
+        c.fillStyle = this.color;
+        c.shadowColor = this.color;
+        c.shadowBlur = 12;
+        c.globalAlpha = Math.min(1, this.life * 1.5);
+        c.textAlign = 'center';
+        c.fillText(this.text, this.x, this.y);
+        c.restore();
+      }
+    }
+
+    function spawnSparks(x, y, color, count = 8) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 80 + Math.random() * 240;
+        state.particles.push(new Particle(
+          x, y,
+          Math.cos(angle) * spd,
+          Math.sin(angle) * spd,
+          color,
+          0.3 + Math.random() * 0.4,
+          2 + Math.random() * 3
+        ));
+      }
+    }
+
+    function spawnExplosion(x, y) {
+      state.screenShake = 16;
+      state.shockwaves.push(new Shockwave(x, y, 160, '#f43f5e'));
+      for (let i = 0; i < 40; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 160 + Math.random() * 450;
+        state.particles.push(new Particle(
+          x, y,
+          Math.cos(angle) * spd,
+          Math.sin(angle) * spd,
+          Math.random() > 0.4 ? '#f43f5e' : '#fbbf24',
+          0.5 + Math.random() * 0.5,
+          3 + Math.random() * 5
+        ));
+      }
+    }
+
+    function showNotice(text) {
+      const toast = document.getElementById('noticeToast');
+      toast.innerText = text;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+    }
+
+    /* ==========================================================================
+       BOTTOM MOVING BUCKETS & CATCHERS
+       ========================================================================== */
+    class CatcherBucket {
+      constructor(x, y, width, multiplier, label, isCenter = false) {
+        this.x = x;
+        this.y = y;
+        this.baseWidth = width;
+        this.height = 36;
+        this.multiplier = multiplier;
+        this.label = label;
+        this.isCenter = isCenter;
+        this.vx = isCenter ? 120 : 75;
+        this.minX = 40;
+        this.maxX = V_WIDTH - 40;
+      }
+
+      update(dt) {
+        const magnetBonus = state.upgrades.magnet * 16;
+        this.width = this.baseWidth + magnetBonus;
+
+        this.x += this.vx * dt;
+        if (this.x - this.width / 2 < this.minX) {
+          this.x = this.minX + this.width / 2;
+          this.vx = Math.abs(this.vx);
+        } else if (this.x + this.width / 2 > this.maxX) {
+          this.x = this.maxX - this.width / 2;
+          this.vx = -Math.abs(this.vx);
+        }
+      }
+
+      draw(c) {
+        c.save();
+        const halfW = this.width / 2;
+        const topY = this.y - this.height / 2;
+
+        c.beginPath();
+        c.moveTo(this.x - halfW, topY);
+        c.lineTo(this.x - halfW * 0.8, topY + this.height);
+        c.lineTo(this.x + halfW * 0.8, topY + this.height);
+        c.lineTo(this.x + halfW, topY);
+
+        const glowCol = this.isCenter ? '#f43f5e' : '#00f7ff';
+        c.strokeStyle = glowCol;
+        c.lineWidth = 3;
+        c.shadowColor = glowCol;
+        c.shadowBlur = 15;
+        c.stroke();
+
+        c.fillStyle = this.isCenter ? 'rgba(244, 63, 94, 0.2)' : 'rgba(6, 182, 212, 0.15)';
+        c.fill();
+
+        c.font = 'bold 14px Orbitron, monospace';
+        c.fillStyle = '#ffffff';
+        c.shadowColor = glowCol;
+        c.shadowBlur = 10;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(this.label, this.x, this.y + 2);
+        c.restore();
+      }
+    }
+
+    function initBuckets() {
+      state.buckets = [
+        new CatcherBucket(V_WIDTH * 0.2, 935, 90, 2, '2X COINS', false),
+        new CatcherBucket(V_WIDTH * 0.5, 935, 95, 5, '+1 BALL', true),
+        new CatcherBucket(V_WIDTH * 0.8, 935, 90, 2, '2X COINS', false)
+      ];
+      state.buckets[0].vx = 80;
+      state.buckets[1].vx = -115;
+      state.buckets[2].vx = 95;
+    }
+
+    /* ==========================================================================
+       LEVEL ARCHITECTURE & BOARD GENERATOR
+       ========================================================================== */
+    function generateBoard(levelNumber) {
+      state.pegs = [];
+      state.bumpers = [];
+      state.isFeverMode = false;
+      document.getElementById('feverBanner').classList.add('hidden');
+
+      const pegRadius = 13.5;
+      const rows = 10;
+      const startY = 175;
+      const spacingY = 52;
+      let orangeCount = 0;
+
+      const style = levelNumber % 3;
+
+      for (let r = 0; r < rows; r++) {
+        const cols = (r % 2 === 0) ? 9 : 8;
+        const rowWidth = (cols - 1) * 65;
+        const startX = (V_WIDTH - rowWidth) / 2;
+        const currentY = startY + r * spacingY;
+
+        for (let c = 0; c < cols; c++) {
+          const currentX = startX + c * 65;
+          let typeKey = 'BLUE';
+
+          // Layout Archetypes
+          if (style === 0) {
+            if ((r + c) % 3 === 0 && Math.random() > 0.25) typeKey = 'ORANGE';
+          } else if (style === 1) {
+            if ((r === 2 || r === 7) || (c === 1 || c === cols - 2)) typeKey = 'ORANGE';
+          } else {
+            if (Math.sin(r * 0.9 + c) > 0.3) typeKey = 'ORANGE';
+          }
+
+          // Special Peg Distro
+          const rand = Math.random();
+          if (rand < 0.05 && typeKey === 'BLUE') {
+            typeKey = 'GREEN'; // Multiball
+          } else if (rand < 0.09 && typeKey === 'BLUE') {
+            typeKey = 'PURPLE'; // Bomb
+          } else if (rand < 0.13 && typeKey === 'BLUE') {
+            typeKey = 'GOLD'; // Gold coin treasure
+          }
+
+          if (typeKey === 'ORANGE') orangeCount++;
+          state.pegs.push(new Peg(currentX, currentY, pegRadius, typeKey));
+        }
+      }
+
+      // Add 2 pinball power-bumpers for rich bouncy gameplay
+      state.bumpers.push(new BumperPin(V_WIDTH * 0.28, 480));
+      state.bumpers.push(new BumperPin(V_WIDTH * 0.72, 480));
+
+      // Guarantee minimum orange target threshold
+      if (orangeCount < 8) {
+        for (let i = 0; i < 6; i++) {
+          const idx = Math.floor(Math.random() * state.pegs.length);
+          if (state.pegs[idx].typeKey === 'BLUE') {
+            state.pegs[idx].typeKey = 'ORANGE';
+            state.pegs[idx].type = PEG_DEFS.ORANGE;
+            orangeCount++;
+          }
+        }
+      }
+
+      state.targetsRemaining = orangeCount;
+      state.totalTargets = orangeCount;
+      updateUI();
+    }
+
+    /* ==========================================================================
+       SUB-STEP PHYSICS SIMULATION & COLLISION ENGINE
+       ========================================================================== */
+    const cannon = {
+      x: V_WIDTH / 2,
+      y: 50,
+      length: 52,
+      baseRadius: 24
+    };
+
+    function shootBall() {
+      if (state.ballsRemaining <= 0) return;
+      if (state.activeBalls.length >= 6) return; // Prevent performance stalls
+
+      state.ballsRemaining--;
+      updateUI();
+      audio.playShoot();
+
+      const speed = 760;
+      const vx = Math.cos(state.aimAngle) * speed;
+      const vy = Math.sin(state.aimAngle) * speed;
+
+      const spawnX = cannon.x + Math.cos(state.aimAngle) * cannon.length;
+      const spawnY = cannon.y + Math.sin(state.aimAngle) * cannon.length;
+
+      state.activeBalls.push(new Ball(spawnX, spawnY, vx, vy, state.equippedSkin));
+      state.shockwaves.push(new Shockwave(spawnX, spawnY, 40, '#00f7ff'));
+      spawnSparks(spawnX, spawnY, '#00f7ff', 8);
+    }
+
+    function checkPegCollision(ball) {
+      const bounceBoost = 1 + (state.upgrades.bounce * 0.09);
+
+      for (let peg of state.pegs) {
+        if (peg.isCleared) continue;
+
+        const dx = ball.x - peg.x;
+        const dy = ball.y - peg.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = ball.radius + peg.radius;
+
+        if (distSq < minDist * minDist) {
+          const dist = Math.sqrt(distSq) || 1;
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          // Push ball outside overlap
+          ball.x = peg.x + nx * (minDist + 0.1);
+          ball.y = peg.y + ny * (minDist + 0.1);
+
+          // Dot product reflection
+          const dot = ball.vx * nx + ball.vy * ny;
+          if (dot < 0) {
+            const restitution = 0.85 * bounceBoost;
+            ball.vx = (ball.vx - (1 + restitution) * dot * nx);
+            ball.vy = (ball.vy - (1 + restitution) * dot * ny);
+          }
+
+          resolvePegImpact(peg, ball);
+          break;
+        }
+      }
+    }
+
+    function checkBumperCollision(ball) {
+      for (let b of state.bumpers) {
+        const dx = ball.x - b.x;
+        const dy = ball.y - b.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = ball.radius + b.radius;
+
+        if (distSq < minDist * minDist) {
+          const dist = Math.sqrt(distSq) || 1;
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          ball.x = b.x + nx * (minDist + 0.5);
+          ball.y = b.y + ny * (minDist + 0.5);
+
+          // Strong pinball kickback
+          const kickSpeed = 650;
+          ball.vx = nx * kickSpeed;
+          ball.vy = ny * kickSpeed;
+
+          b.pulse = 1.0;
+          state.screenShake = 6;
+          audio.playBumper();
+          state.shockwaves.push(new Shockwave(b.x, b.y, 75, '#818cf8'));
+          state.score += 250;
+          state.roundScore += 250;
+          state.floatingTexts.push(new FloatingText(b.x, b.y - 20, '+250 BUMP!', '#818cf8'));
+          break;
+        }
+      }
+    }
+
+    function checkBucketCollisions(ball) {
+      for (let bucket of state.buckets) {
+        const halfW = bucket.width / 2;
+        if (ball.x > bucket.x - halfW && ball.x < bucket.x + halfW) {
+          if (ball.y >= bucket.y - bucket.height / 2 && ball.y <= bucket.y + bucket.height / 2) {
+            ball.isAlive = false;
+
+            if (bucket.isCenter) {
+              state.ballsRemaining++;
+              audio.playFanfare();
+              state.floatingTexts.push(new FloatingText(bucket.x, bucket.y - 30, '+1 FREE BALL!', '#f43f5e', true));
+              showNotice('FREE BALL RECOVERED!');
+            } else {
+              const coinGain = 20 * bucket.multiplier;
+              state.coins += coinGain;
+              state.roundCoins += coinGain;
+              audio.playCoin();
+              state.floatingTexts.push(new FloatingText(bucket.x, bucket.y - 30, `+${coinGain} COINS!`, '#facc15'));
+            }
+
+            const scoreGain = 1000 * bucket.multiplier;
+            state.score += scoreGain;
+            state.roundScore += scoreGain;
+            state.shockwaves.push(new Shockwave(bucket.x, bucket.y, 60, bucket.isCenter ? '#f43f5e' : '#00f7ff'));
+            updateUI();
+            return;
+          }
+        }
+      }
+    }
+
+    function resolvePegImpact(peg, triggerBall) {
+      state.roundStreak++;
+      audio.playMusicalHit(state.roundStreak);
+
+      peg.hitPulse = 1.0;
+      if (!peg.hit) {
+        peg.hit = true;
+        state.shockwaves.push(new Shockwave(peg.x, peg.y, 45, peg.type.glow));
+
+        // Combo multiplier bonus
+        const comboBonus = Math.min(state.roundStreak * 25, 300);
+        const pts = peg.type.points + comboBonus;
+        state.score += pts;
+        state.roundScore += pts;
+
+        state.floatingTexts.push(new FloatingText(
+          peg.x, peg.y - 12,
+          `+${pts}${state.roundStreak > 2 ? ` (x${state.roundStreak})` : ''}`,
+          peg.type.color
+        ));
+
+        if (peg.type.coins > 0) {
+          state.coins += peg.type.coins;
+          state.roundCoins += peg.type.coins;
+          audio.playCoin();
+        }
+
+        // Target (Orange) resolution
+        if (peg.type.isTarget) {
+          state.targetsRemaining--;
+          spawnSparks(peg.x, peg.y, peg.type.color, 14);
+          if (state.targetsRemaining <= 0 && !state.isFeverMode) {
+            triggerFeverMode();
+          }
+        }
+
+        // Special: Multiball (Green)
+        if (peg.type.isSpecial === 'MULTI') {
+          for (let i = 0; i < 2; i++) {
+            const ang = Math.random() * Math.PI * 2;
+            const spd = 450 + Math.random() * 200;
+            state.activeBalls.push(new Ball(peg.x, peg.y, Math.cos(ang) * spd, Math.sin(ang) * spd, state.equippedSkin));
+          }
+          showNotice('TRIPLE BALL SPLIT!');
+        }
+
+        // Special: Bomb (Purple)
+        if (peg.type.isSpecial === 'BOMB') {
+          audio.playExplosion();
+          spawnExplosion(peg.x, peg.y);
+          clearBlastRadius(peg.x, peg.y, 140);
+        }
+
+        // Special: Gold (Yellow)
+        if (peg.type.isSpecial === 'COIN') {
+          showNotice('+15 BONUS COINS!');
+          spawnSparks(peg.x, peg.y, '#facc15', 18);
+        }
+      }
+
+      updateUI();
+    }
+
+    function clearBlastRadius(cx, cy, radius) {
+      for (let peg of state.pegs) {
+        if (peg.isCleared) continue;
+        const dx = peg.x - cx;
+        const dy = peg.y - cy;
+        if (dx * dx + dy * dy < radius * radius) {
+          peg.isCleared = true;
+          state.score += peg.type.points;
+          state.roundScore += peg.type.points;
+          if (peg.type.isTarget) {
+            state.targetsRemaining--;
+            if (state.targetsRemaining <= 0 && !state.isFeverMode) triggerFeverMode();
+          }
+          spawnSparks(peg.x, peg.y, peg.type.color, 8);
+        }
+      }
+    }
+
+    function triggerFeverMode() {
+      state.isFeverMode = true;
+      document.getElementById('feverBanner').classList.remove('hidden');
+      audio.playFanfare();
+      state.screenShake = 20;
+
+      // Celebrate with fireworks
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          spawnExplosion(V_WIDTH * (0.2 + i * 0.15), 250 + Math.random() * 100);
+        }, i * 180);
+      }
+
+      setTimeout(() => {
+        onRoundClear();
+      }, 1500);
+    }
+
+    /* ==========================================================================
+       ROUND COMPLETION & GAMEOVER
+       ========================================================================== */
+    function onRoundClear() {
+      PokiBridge.gameplayStop();
+      state.roundState = 'ROUND_OVER';
+      state.coins += 60;
+      state.roundCoins += 60;
+      persistData();
+      showResultModal(true);
+    }
+
+    function checkGameOver() {
+      if (state.ballsRemaining <= 0 && state.activeBalls.length === 0 && state.targetsRemaining > 0) {
+        PokiBridge.gameplayStop();
+        state.roundState = 'GAME_OVER';
+        persistData();
+        showResultModal(false);
+      }
+    }
+
+    function showResultModal(isWin) {
+      const modal = document.getElementById('resultModal');
+      const title = document.getElementById('resultTitle');
+      const desc = document.getElementById('resultDesc');
+      const btnCont = document.getElementById('btnResultContinue');
+      const btnRevive = document.getElementById('btnResultRevive');
+
+      document.getElementById('resultScore').innerText = state.roundScore.toLocaleString();
+      document.getElementById('resultCoins').innerText = `+${state.roundCoins}`;
+      document.getElementById('resultHigh').innerText = Math.max(state.highScore, state.score).toLocaleString();
+
+      if (isWin) {
+        title.innerText = 'STAGE CLEARED!';
+        title.className = 'text-3xl font-arcade font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400';
+        desc.innerText = 'FEVER OBLITERATION COMPLETE!';
+        btnCont.innerText = 'NEXT SECTOR';
+        btnRevive.classList.add('hidden');
+      } else {
+        title.innerText = 'OUT OF BALLS';
+        title.className = 'text-3xl font-arcade font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500';
+        desc.innerText = `${state.targetsRemaining} target nodes remained active.`;
+        btnCont.innerText = 'RETRY SECTOR';
+        btnRevive.classList.remove('hidden');
+      }
+
+      modal.classList.remove('hidden');
+      PokiBridge.commercialBreak();
+    }
+
+    function startNextLevel() {
+      document.getElementById('resultModal').classList.add('hidden');
+      state.level++;
+      state.ballsRemaining = state.maxBalls + state.upgrades.capacity;
+      state.roundScore = 0;
+      state.roundCoins = 0;
+      state.roundStreak = 0;
+      state.roundState = 'PLAYING';
+      generateBoard(state.level);
+      PokiBridge.gameplayStart();
+      showNotice(`SECTOR ${state.level}`);
+    }
+
+    function restartRound() {
+      document.getElementById('resultModal').classList.add('hidden');
+      state.ballsRemaining = state.maxBalls + state.upgrades.capacity;
+      state.roundScore = 0;
+      state.roundCoins = 0;
+      state.roundStreak = 0;
+      state.roundState = 'PLAYING';
+      generateBoard(state.level);
+      PokiBridge.gameplayStart();
+    }
+
+    /* ==========================================================================
+       SHOP & BALL SKINS UI
+       ========================================================================== */
+    const SHOP_UPGRADES_CONFIG = [
+      { id: 'bounce', name: 'Super Rebound', desc: 'Increases bounce restitution velocity on all pegs.', baseCost: 50, maxLevel: 4 },
+      { id: 'capacity', name: 'Ball Magazine', desc: 'Adds +1 extra ball per round permanently.', baseCost: 75, maxLevel: 4 },
+      { id: 'laser', name: 'Laser Guidance', desc: 'Extends holographic aim line trajectory.', baseCost: 40, maxLevel: 5 },
+      { id: 'magnet', name: 'Wide Catchers', desc: 'Widens bottom bonus buckets for effortless catches.', baseCost: 60, maxLevel: 3 }
+    ];
+
+    function renderShop() {
+      // 1. Render Upgrades
+      const upContainer = document.getElementById('shopItemsContainer');
+      upContainer.innerHTML = '';
+
+      SHOP_UPGRADES_CONFIG.forEach(cfg => {
+        const currentLvl = state.upgrades[cfg.id] || 0;
+        const isMax = currentLvl >= cfg.maxLevel;
+        const cost = cfg.baseCost * (currentLvl + 1);
+
+        const card = document.createElement('div');
+        card.className = 'flex items-center justify-between p-3 rounded-xl bg-slate-950/70 border border-slate-800';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-sm text-cyan-300 font-arcade">${cfg.name}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">LVL ${currentLvl}/${cfg.maxLevel}</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">${cfg.desc}</p>
+          </div>
+          <div>
+            ${isMax 
+              ? `<span class="text-xs font-arcade text-emerald-400 font-bold px-3 py-1.5 bg-emerald-950/50 rounded-lg border border-emerald-800">MAX</span>`
+              : `<button onclick="buyUpgrade('${cfg.id}', ${cost})" class="font-arcade text-xs font-bold px-3 py-1.5 rounded-lg ${state.coins >= cost ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950' : 'bg-slate-800 text-slate-500 cursor-not-allowed'} transition">
+                   ${cost} ¢
+                 </button>`
+            }
+          </div>
+        `;
+        upContainer.appendChild(card);
+      });
+
+      // 2. Render Skins
+      const skinsContainer = document.getElementById('skinsContainer');
+      skinsContainer.innerHTML = '';
+
+      Object.values(BALL_SKINS).forEach(skin => {
+        const isUnlocked = state.unlockedSkins.includes(skin.id);
+        const isEquipped = state.equippedSkin === skin.id;
+
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-xl border flex flex-col justify-between ${isEquipped ? 'bg-cyan-950/50 border-cyan-400 shadow-md' : 'bg-slate-950/70 border-slate-800'}`;
+        card.innerHTML = `
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="w-4 h-4 rounded-full shadow-lg" style="background-color: ${skin.glowColor}"></span>
+            <span class="font-arcade text-xs font-bold text-white">${skin.name}</span>
+          </div>
+          <div>
+            ${isEquipped 
+              ? `<span class="block text-center text-[10px] font-arcade font-bold text-cyan-300 py-1 bg-cyan-900/40 rounded border border-cyan-600">EQUIPPED</span>`
+              : isUnlocked
+                ? `<button onclick="equipSkin('${skin.id}')" class="w-full text-center text-[10px] font-arcade font-bold text-white py-1 bg-slate-800 hover:bg-slate-700 rounded border border-slate-600 transition">EQUIP</button>`
+                : `<button onclick="unlockSkin('${skin.id}', ${skin.cost})" class="w-full text-center text-[10px] font-arcade font-bold ${state.coins >= skin.cost ? 'text-amber-300 bg-amber-950/50 hover:bg-amber-900/60 border-amber-600' : 'text-slate-500 bg-slate-800/40 border-slate-700 cursor-not-allowed'} py-1 rounded border transition">
+                     ${skin.cost} ¢
+                   </button>`
+            }
+          </div>
+        `;
+        skinsContainer.appendChild(card);
+      });
+    }
+
+    window.buyUpgrade = function(id, cost) {
+      if (state.coins >= cost) {
+        state.coins -= cost;
+        state.upgrades[id] = (state.upgrades[id] || 0) + 1;
+        audio.playCoin();
+        updateUI();
+        renderShop();
+        persistData();
+      }
+    };
+
+    window.unlockSkin = function(id, cost) {
+      if (state.coins >= cost && !state.unlockedSkins.includes(id)) {
+        state.coins -= cost;
+        state.unlockedSkins.push(id);
+        state.equippedSkin = id;
+        audio.playCoin();
+        updateUI();
+        renderShop();
+        persistData();
+      }
+    };
+
+    window.equipSkin = function(id) {
+      if (state.unlockedSkins.includes(id)) {
+        state.equippedSkin = id;
+        audio.playMusicalHit(3);
+        renderShop();
+        persistData();
+      }
+    };
+
+    function updateUI() {
+      document.getElementById('uiBalls').innerText = state.ballsRemaining;
+      document.getElementById('uiLevel').innerText = state.level;
+      document.getElementById('uiTargets').innerText = `${state.targetsRemaining}/${state.totalTargets}`;
+      document.getElementById('uiScore').innerText = state.score.toLocaleString();
+      document.getElementById('uiCoins').innerText = state.coins;
+
+      const comboBadge = document.getElementById('uiComboBadge');
+      if (state.roundStreak > 1) {
+        comboBadge.classList.remove('hidden');
+        comboBadge.innerText = `COMBO x${state.roundStreak}`;
+      } else {
+        comboBadge.classList.add('hidden');
+      }
+    }
+
+    /* ==========================================================================
+       AIMING & USER INPUT
+       ========================================================================== */
+    function updateAimTarget(screenX, screenY) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = (screenX - rect.left) / scaleRatio;
+      const clientY = (screenY - rect.top) / scaleRatio;
+
+      const dx = clientX - cannon.x;
+      const dy = clientY - cannon.y;
+
+      let angle = Math.atan2(dy, dx);
+      if (angle < 0.22) angle = 0.22;
+      if (angle > Math.PI - 0.22) angle = Math.PI - 0.22;
+
+      state.aimAngle = angle;
+    }
+
+    canvas.addEventListener('mousemove', (e) => updateAimTarget(e.clientX, e.clientY));
+    canvas.addEventListener('mousedown', (e) => {
+      updateAimTarget(e.clientX, e.clientY);
+      shootBall();
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length > 0) updateAimTarget(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length > 0) updateAimTarget(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      shootBall();
+    });
+
+    // Buttons
+    document.getElementById('btnSound').addEventListener('click', () => {
+      const isMuted = !audio.toggle();
+      document.getElementById('iconSoundOn').classList.toggle('hidden', isMuted);
+      document.getElementById('iconSoundOff').classList.toggle('hidden', !isMuted);
+    });
+
+    document.getElementById('btnShop').addEventListener('click', () => {
+      renderShop();
+      document.getElementById('shopModal').classList.remove('hidden');
+    });
+
+    document.getElementById('btnCloseShop').addEventListener('click', () => {
+      document.getElementById('shopModal').classList.add('hidden');
+    });
+
+    document.getElementById('btnWatchAdCoins').addEventListener('click', () => {
+      PokiBridge.rewardedBreak(() => {
+        state.coins += 250;
+        audio.playCoin();
+        updateUI();
+        renderShop();
+        persistData();
+        showNotice('+250 SPONSOR COINS!');
+      });
+    });
+
+    document.getElementById('btnResultRevive').addEventListener('click', () => {
+      PokiBridge.rewardedBreak(() => {
+        document.getElementById('resultModal').classList.add('hidden');
+        state.ballsRemaining += 5;
+        state.roundState = 'PLAYING';
+        updateUI();
+        PokiBridge.gameplayStart();
+        showNotice('+5 BALLS REVIVED!');
+      });
+    });
+
+    document.getElementById('btnResultDoubleCoins').addEventListener('click', () => {
+      PokiBridge.rewardedBreak(() => {
+        state.coins += state.roundCoins;
+        audio.playCoin();
+        updateUI();
+        document.getElementById('btnResultDoubleCoins').classList.add('hidden');
+        showNotice(`DOUBLED! +${state.roundCoins} EXTRA COINS!`);
+        persistData();
+      });
+    });
+
+    document.getElementById('btnResultContinue').addEventListener('click', () => {
+      if (state.targetsRemaining <= 0) {
+        startNextLevel();
+      } else {
+        restartRound();
+      }
+    });
+
+    /* ==========================================================================
+       RENDER & MAIN LOOP
+       ========================================================================== */
+    function drawAimTrajectory(c) {
+      c.save();
+      c.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+      c.lineWidth = 2.5;
+      c.setLineDash([6, 6]);
+
+      const startX = cannon.x + Math.cos(state.aimAngle) * cannon.length;
+      const startY = cannon.y + Math.sin(state.aimAngle) * cannon.length;
+
+      const maxDist = 200 + (state.upgrades.laser * 70);
+      const endX = startX + Math.cos(state.aimAngle) * maxDist;
+      const endY = startY + Math.sin(state.aimAngle) * maxDist;
+
+      c.beginPath();
+      c.moveTo(startX, startY);
+      c.lineTo(endX, endY);
+      c.stroke();
+
+      c.beginPath();
+      c.arc(endX, endY, 4, 0, Math.PI * 2);
+      c.fillStyle = '#00f7ff';
+      c.shadowColor = '#00f7ff';
+      c.shadowBlur = 12;
+      c.fill();
+      c.restore();
+    }
+
+    function drawCannon(c) {
+      c.save();
+      c.translate(cannon.x, cannon.y);
+
+      // Base Dome
+      c.beginPath();
+      c.arc(0, 0, cannon.baseRadius, 0, Math.PI * 2);
+      c.fillStyle = '#0f172a';
+      c.strokeStyle = '#00f7ff';
+      c.lineWidth = 3;
+      c.shadowColor = '#00f7ff';
+      c.shadowBlur = 14;
+      c.stroke();
+      c.fill();
+
+      // Barrel
+      c.rotate(state.aimAngle);
+      c.fillStyle = '#1e293b';
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 2;
+      c.fillRect(0, -9, cannon.length, 18);
+      c.strokeRect(0, -9, cannon.length, 18);
+
+      // Barrel muzzle ring
+      c.fillStyle = '#00f7ff';
+      c.fillRect(cannon.length - 4, -9, 4, 18);
+      c.restore();
+    }
+
+    let lastTime = performance.now();
+
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      // 2 Sub-steps per frame to prevent tunneling through high velocity pegs
+      const subSteps = 2;
+      const subDt = dt / subSteps;
+
+      for (let s = 0; s < subSteps; s++) {
+        for (let i = state.activeBalls.length - 1; i >= 0; i--) {
+          const ball = state.activeBalls[i];
+          ball.update(subDt);
+          checkPegCollision(ball);
+          checkBumperCollision(ball);
+          checkBucketCollisions(ball);
+
+          if (!ball.isAlive) {
+            state.activeBalls.splice(i, 1);
+            if (state.activeBalls.length === 0) {
+              state.roundStreak = 0; // Reset streak when round balls settle
+              updateUI();
+            }
+          }
+        }
+      }
+
+      // Update remaining objects
+      for (let peg of state.pegs) peg.update(dt);
+      for (let bumper of state.bumpers) bumper.update(dt);
+      for (let bucket of state.buckets) bucket.update(dt);
+
+      for (let i = state.shockwaves.length - 1; i >= 0; i--) {
+        state.shockwaves[i].update(dt);
+        if (state.shockwaves[i].life <= 0) state.shockwaves.splice(i, 1);
+      }
+
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        state.particles[i].update(dt);
+        if (state.particles[i].life <= 0) state.particles.splice(i, 1);
+      }
+
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        state.floatingTexts[i].update(dt);
+        if (state.floatingTexts[i].life <= 0) state.floatingTexts.splice(i, 1);
+      }
+
+      // Check game over
+      if (state.roundState === 'PLAYING') {
+        checkGameOver();
+      }
+
+      // Apply screen shake
+      ctx.save();
+      if (state.screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * state.screenShake;
+        const shakeY = (Math.random() - 0.5) * state.screenShake;
+        ctx.translate(shakeX, shakeY);
+        state.screenShake = Math.max(0, state.screenShake - dt * 25);
+      }
+
+      ctx.clearRect(0, 0, V_WIDTH, V_HEIGHT);
+
+      // Cyber Grid
+      ctx.strokeStyle = 'rgba(14, 165, 233, 0.04)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < V_WIDTH; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, V_HEIGHT);
+        ctx.stroke();
+      }
+
+      // Draw layers
+      drawAimTrajectory(ctx);
+      for (let bucket of state.buckets) bucket.draw(ctx);
+      for (let bumper of state.bumpers) bumper.draw(ctx);
+      for (let peg of state.pegs) peg.draw(ctx);
+      for (let sw of state.shockwaves) sw.draw(ctx);
+      for (let b of state.activeBalls) b.draw(ctx);
+      for (let p of state.particles) p.draw(ctx);
+      for (let ft of state.floatingTexts) ft.draw(ctx);
+      drawCannon(ctx);
+
+      ctx.restore();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    /* ==========================================================================
+       INITIALIZATION
+       ========================================================================== */
+    window.onload = function() {
+      PokiBridge.init();
+      loadSavedData();
+      resizeCanvas();
+      initBuckets();
+      generateBoard(state.level);
+      updateUI();
+      PokiBridge.gameplayStart();
+      showNotice('AIM & FIRE!');
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
